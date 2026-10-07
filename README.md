@@ -17,7 +17,7 @@
 1. 获取订阅地址（raw URL）：
 
    ```
-   https://raw.githubusercontent.com/<你的用户名>/<仓库名>/main/laohuangli.ics
+   https://raw.githubusercontent.com/dblplus/laohuangli_ics/main/laohuangli.ics
    ```
 
 2. iPhone 操作路径：
