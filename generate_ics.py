@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 老黄历 ICS 日历生成脚本
-生成 2026-01-01 至 2028-12-31 的单文件 ICS 订阅日历。
+生成 2020-01-01 至 2030-12-31 的单文件 ICS 订阅日历。
 内容：每日宜忌、干支、冲煞、二十四节气、传统节日、吉神方位、时辰吉凶、彭祖百忌、胎神。
+特性：
+- 事件类型 emoji 图标：🏮节日、🌾节气、📜平日（节日+节气同日为 🏮🌾）
+- CATEGORIES 分类：老黄历 + 节日/节气/黄历
+- COLOR 颜色（RFC 7986）：节日 crimson、节气 darkgreen、平日 saddlebrown、日历整体 darkorange
 数据算法来源：cnlunar 库（离线计算，无需外部 API）。
 
 用法：python generate_ics.py
@@ -12,11 +16,16 @@
 import datetime
 import cnlunar
 
-START_YEAR = 2026
-END_YEAR = 2028
+START_YEAR = 2020
+END_YEAR = 2030
 OUTPUT_FILE = "laohuangli.ics"
 CAL_NAME = "老黄历"
 UID_DOMAIN = "laohuangli"
+
+# 事件类型 → emoji 图标 / 分类 / 颜色（RFC 7986 COLOR，CSS3 颜色名）
+TYPE_FESTIVAL = {"emoji": "🏮", "category": "节日", "color": "crimson"}   # 传统节日：红
+TYPE_SOLARTERM = {"emoji": "🌾", "category": "节气", "color": "darkgreen"}  # 二十四节气：绿
+TYPE_PLAIN = {"emoji": "📜", "category": "黄历", "color": "saddlebrown"}   # 普通黄历日：棕
 
 # 十二时辰对应现代时间区间
 SHICHEN_HOURS = [
@@ -100,8 +109,20 @@ def build_event(day: datetime.date) -> str:
             festivals.extend(x for x in str(h).split() if x)
     festival_str = "、".join(dict.fromkeys(festivals))  # 去重保序
 
+    # --- 事件类型：节日 > 节气 > 平日（决定图标、分类、颜色）---
+    if festival_str and solar_term:
+        ev_type = {"emoji": TYPE_FESTIVAL["emoji"] + TYPE_SOLARTERM["emoji"],
+                   "category": TYPE_FESTIVAL["category"] + "," + TYPE_SOLARTERM["category"],
+                   "color": TYPE_FESTIVAL["color"]}
+    elif festival_str:
+        ev_type = TYPE_FESTIVAL
+    elif solar_term:
+        ev_type = TYPE_SOLARTERM
+    else:
+        ev_type = TYPE_PLAIN
+
     # --- SUMMARY（日历列表页可见，保持精简）---
-    title_parts = []
+    title_parts = [ev_type["emoji"]]
     if solar_term:
         title_parts.append(f"【{solar_term}】")
     if festival_str:
@@ -149,6 +170,8 @@ def build_event(day: datetime.date) -> str:
         f"DTEND;VALUE=DATE:{dtend}",
         f"SUMMARY:{ics_escape(summary)}",
         f"DESCRIPTION:{ics_escape(description)}",
+        f"CATEGORIES:{ics_escape('老黄历,' + ev_type['category'])}",
+        f"COLOR:{ev_type['color']}",
         "TRANSP:TRANSPARENT",
         "END:VEVENT",
     ]
@@ -169,6 +192,7 @@ def main():
         fold_line(f"X-WR-CALNAME:{ics_escape(CAL_NAME)}"),
         fold_line(f"X-WR-CALDESC:{ics_escape(f'{START_YEAR}-{END_YEAR} 年老黄历：每日宜忌、干支、冲煞、节气、节日、吉神方位、时辰吉凶')}"),
         "X-WR-TIMEZONE:Asia/Shanghai",
+        "COLOR:darkorange",
         "REFRESH-INTERVAL;VALUE=DURATION:P7D",
         "X-PUBLISHED-TTL:P7D",
     ])
